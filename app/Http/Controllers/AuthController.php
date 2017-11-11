@@ -7,6 +7,10 @@ use Illuminate\Http\Request;
 
 use App\Http\Requests;
 
+use Tymon\JWTAuth\Exceptions\JWTException;
+use JWTAuth;
+use Validator;
+
 class AuthController extends Controller
 {
     public function store(Request $request)
@@ -49,24 +53,30 @@ class AuthController extends Controller
 
     public function signin(Request $request)
     {
-        $this->validate($request, [
+       $credentials = $request->only('email', 'password');
+
+        $validator = Validator::make($credentials, [
             'email' => 'required|email',
             'password' => 'required'
         ]);
+
+        if ($validator->fails()) {
+            return response()
+                ->json([
+                    'code' => 1,
+                    'message' => 'Validation failed.',
+                    'errors' => $validator->errors()
+                ], 422);
+        }
         
-        $email = $request->input('email');
-        $password = $request->input('password');
-        $user = [
-            'name' => 'Name',
-            'email' => $email,
-            'password' => $password
-        ];
+        try {
+            if (! $token = JWTAuth::attempt($credentials)) {
+                return response()->json(['code' => 2, 'message' => 'Invalid credentials.'], 401);
+            }
+        } catch (JWTException $e) {
+            return response()->json(['msg' => 'Could not create token'], 500);
+        }
 
-        $response = [
-            'msg' => 'User signed in',
-            'user' => $user
-        ];
-
-        return response()->json($response, 200);
+        return response()->json(['token' => $token]);
     }
 }

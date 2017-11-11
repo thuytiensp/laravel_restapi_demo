@@ -64,7 +64,7 @@ class MeetingController extends Controller
             'description' => $description
         ]);
         if ($meeting->save()) {
-            $meeting->users()->attach($user_id);
+            $meeting->users()->attach($user_id);//should check if user_id is exist in users table
             $meeting->view_meeting = [
                 'href' => 'api/v1/meeting/' . $meeting->id,
                 'method' => 'GET'
