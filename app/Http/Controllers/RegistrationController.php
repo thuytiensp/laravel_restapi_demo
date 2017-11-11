@@ -8,9 +8,14 @@ use App\Http\Requests;
 
 use App\Meeting;
 use App\User;
+use JWTAuth;
 
 class RegistrationController extends Controller
 {
+    public function __construct()
+    {
+        $this->middleware('jwt.auth');
+    }
     /**
      * Store a newly created resource in storage.
      *
@@ -66,8 +71,22 @@ class RegistrationController extends Controller
      */
     public function destroy($id)
     {
-        $meeting = Meeting::findOrFail($id);
-        $meeting->users()->detach();
+        try {
+                $meeting = Meeting::findOrFail($id);
+        } catch (ModelNotFoundException $e) {
+            return response()->json(['msg' => 'Could not find meeting with id = '.$id], 500);
+        }
+
+        if(!$user = JWTAuth::parseToken()->authenticate())
+        {
+            return response()->json(['msg' => "User not found", 404]);
+        }
+
+        if (!$meeting->users()->where('users.id', $user->id)->first()) {
+            return response()->json(['msg' => 'user not registered for meeting, delete operation not successful'], 401);
+        };
+
+        $meeting->users()->detach($user->id);
 
         $response = [
             'msg' => 'User unregistered for meeting',
